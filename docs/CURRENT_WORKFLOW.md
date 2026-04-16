@@ -2,7 +2,7 @@
 
 This is the current rough workflow of the ServiceNow-native solution as it works today.
 
-## Manager Summary
+## Overview
 
 - User opens a case or incident in ServiceNow.
 - User clicks the `AI Summary` button.
