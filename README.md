@@ -1,7 +1,6 @@
 # Case Summary — ServiceNow Native Integration
 # ════════════════════════════════════
 #
-# AI-powered case/incident summarization directly inside ServiceNow.
 # Click "🤖 AI Summary" button on the form → see summary popup.
 #
 
@@ -79,5 +78,8 @@ See `SETUP_GUIDE.md` for full details.
 3. **UI Action** — paste `ai_summary_button.js`
 4. **(Optional) Custom fields + UI Macro** — for persistent panel on form
 5. **Test** — open an incident, click the button
+
+
+
 
    # Author: Jansi Gorle · CX · April 2026
