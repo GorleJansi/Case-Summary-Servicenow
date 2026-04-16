@@ -2,7 +2,7 @@
 # ════════════════════════════════════
 #
 # AI-powered case/incident summarization directly inside ServiceNow.
-# Click "🤖 AI Summary" button on the form → see summary popup (like AI Assist panel).
+# Click "🤖 AI Summary" button on the form → see summary popup.
 #
 # Author: Jansi Gorle · CX · April 2026
 
