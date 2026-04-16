@@ -1,0 +1,214 @@
+/**
+ * ═══════════════════════════════════════════════════════════════
+ *  UI Macro: x_case_summary_ai_panel
+ * ═══════════════════════════════════════════════════════════════
+ *
+ *  Renders an "AI Assist"-style panel at the TOP of the form
+ *  (exactly like the "Powered by AI Assist!" panel in ServiceNow).
+ *
+ *  This panel reads from the custom field 'x_case_summary_ai_summary'
+ *  and displays the saved summary sections.
+ *
+ *  Setup:
+ *    1. Add custom field 'x_case_summary_ai_summary' (string, 4000 chars) to the incident/case table
+ *    2. Add custom field 'x_case_summary_ai_generated_on' (string) to the incident/case table
+ *    3. Create this UI Macro
+ *    4. Create a Formatter that references this macro
+ *    5. Add the Formatter to the form layout (drag to top)
+ *
+ *  ServiceNow UI Macro Configuration:
+ *    Name:        x_case_summary_ai_panel
+ *    Active:      ✅
+ *    Description: AI Summary panel — displays CIRCUIT LLM generated summary
+ *
+ *  Paste the XML below into the UI Macro body.
+ *
+ *  Author: Jansi Gorle · CX · April 2026
+ * ═══════════════════════════════════════════════════════════════
+ */
+
+// ── PASTE THIS XML INTO THE UI MACRO ──
+// Navigate to: System UI → UI Macros → New
+// Name: x_case_summary_ai_panel
+// Paste everything between the XML START/END markers below.
+
+/*
+=== XML START ===
+*/
+
+`
+<?xml version="1.0" encoding="utf-8" ?>
+<j:jelly trim="false" xmlns:j="jelly:core" xmlns:g="glide" xmlns:j2="null" xmlns:g2="null">
+
+  <!-- Only show if the record has an AI summary -->
+  <j:if test="${!empty(current.x_case_summary_ai_summary)}">
+
+    <div id="ai_summary_panel" style="
+      margin: 12px 0 16px 0;
+      border: 1px solid #e5e7eb;
+      border-radius: 8px;
+      overflow: hidden;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+      font-family: SourceSansPro, Arial, sans-serif;
+    ">
+
+      <!-- ═══ HEADER BAR (like "Powered by AI Assist!") ═══ -->
+      <div style="
+        background: linear-gradient(135deg, #6366f1 0%, #0078d7 100%);
+        color: white;
+        padding: 12px 18px;
+        display: flex;
+        align-items: center;
+        cursor: pointer;
+      " onclick="
+        var content = document.getElementById('ai_summary_content');
+        var arrow = document.getElementById('ai_summary_arrow');
+        if (content.style.display === 'none') {
+          content.style.display = 'block';
+          arrow.innerHTML = '&#9650;';
+        } else {
+          content.style.display = 'none';
+          arrow.innerHTML = '&#9660;';
+        }
+      ">
+        <span style="font-size:16px; margin-right:8px;">✨</span>
+        <span style="font-size:14px; font-weight:600;">Powered by CIRCUIT LLM</span>
+        <span style="font-size:11px; opacity:0.8; margin-left:8px;">(ℹ)</span>
+        <span id="ai_summary_arrow" style="margin-left:auto; font-size:12px;">&#9650;</span>
+      </div>
+
+      <!-- ═══ CONTENT AREA ═══ -->
+      <div id="ai_summary_content" style="
+        padding: 18px 20px;
+        background: #ffffff;
+      ">
+
+        <g2:evaluate var="jvar_summary" jelly="true">
+          var summary = current.x_case_summary_ai_summary.toString();
+          summary;
+        </g2:evaluate>
+
+        <g2:evaluate var="jvar_generated_on" jelly="true">
+          var genOn = '';
+          if (current.isValidField('x_case_summary_ai_generated_on')) {
+            genOn = current.x_case_summary_ai_generated_on.toString();
+          }
+          genOn;
+        </g2:evaluate>
+
+        <!-- Parse and render sections using client-side JS -->
+        <script>
+          (function() {
+            var rawSummary = '${jvar_summary}'.replace(/\\n/g, '\n');
+            var container = document.getElementById('ai_summary_sections');
+            if (!container || !rawSummary) return;
+
+            var knownHeaders = ['Issue', 'Action Taken', 'Resolution', 'SLA Information'];
+            var lines = rawSummary.split('\n');
+            var html = '';
+            var currentHeader = '';
+            var currentBody = [];
+
+            function flush() {
+              if (currentHeader &amp;&amp; currentBody.length > 0) {
+                var bodyText = currentBody.join('\n').trim();
+                html += '<div style="margin-bottom:16px;">';
+                html += '<div style="font-size:14px; font-weight:700; color:#1a1a1a; margin-bottom:5px;">' + currentHeader + ':</div>';
+
+                // Check if body has bullet points
+                if (bodyText.indexOf('•') > -1 || bodyText.indexOf('- ') > -1) {
+                  var bullets = bodyText.split('\n');
+                  html += '<ul style="margin:0; padding-left:20px; font-size:13px; color:#333; line-height:1.7;">';
+                  for (var b = 0; b &lt; bullets.length; b++) {
+                    var bullet = bullets[b].trim().replace(/^[•\-\*]\s*/, '');
+                    if (bullet) {
+                      html += '<li style="margin-bottom:2px;">' + bullet + '</li>';
+                    }
+                  }
+                  html += '</ul>';
+                } else {
+                  html += '<div style="font-size:13px; color:#333; line-height:1.6;">' + bodyText + '</div>';
+                }
+                html += '</div>';
+              }
+            }
+
+            for (var i = 0; i &lt; lines.length; i++) {
+              var line = lines[i].trim();
+              var isHeader = false;
+              for (var h = 0; h &lt; knownHeaders.length; h++) {
+                if (line === knownHeaders[h] + ':' || line === knownHeaders[h]) {
+                  flush();
+                  currentHeader = knownHeaders[h];
+                  currentBody = [];
+                  isHeader = true;
+                  break;
+                }
+              }
+              if (!isHeader &amp;&amp; currentHeader) {
+                currentBody.push(line);
+              }
+            }
+            flush();
+
+            // Attachment line
+            html += '<div style="margin-bottom:12px;">';
+            html += '<div style="font-size:14px; font-weight:700; color:#1a1a1a; margin-bottom:5px;">Attachment:</div>';
+            html += '<div style="font-size:13px; color:#333;">• N/A</div>';
+            html += '</div>';
+
+            container.innerHTML = html;
+          })();
+        </script>
+
+        <div id="ai_summary_sections"></div>
+
+        <!-- ═══ FOOTER ═══ -->
+        <div style="
+          border-top: 1px solid #e5e7eb;
+          padding-top: 10px;
+          margin-top: 14px;
+          display: flex;
+          align-items: center;
+          flex-wrap: wrap;
+          gap: 16px;
+        ">
+          <!-- Action icons (like the AI Assist panel) -->
+          <span style="cursor:pointer; font-size:16px;" title="Copy summary">📋</span>
+          <span style="cursor:pointer; font-size:16px;" title="Thumbs up">👍</span>
+          <span style="cursor:pointer; font-size:16px;" title="Thumbs down">👎</span>
+          <span style="cursor:pointer; font-size:16px;" title="Regenerate" onclick="generateAISummary()">🔄</span>
+
+          <span style="margin-left:auto; font-size:11px; color:#9ca3af;">
+            Last generated: ${jvar_generated_on}
+          </span>
+        </div>
+
+      </div>
+
+    </div>
+
+  </j:if>
+
+  <!-- If no summary yet, show a subtle hint -->
+  <j:if test="${empty(current.x_case_summary_ai_summary)}">
+    <div style="
+      margin: 8px 0;
+      padding: 10px 16px;
+      background: #f9fafb;
+      border: 1px dashed #d1d5db;
+      border-radius: 6px;
+      font-size: 12px;
+      color: #9ca3af;
+      font-family: SourceSansPro, Arial, sans-serif;
+    ">
+      💡 Click the <strong>🤖 AI Summary</strong> button above to generate an AI-powered summary for this record.
+    </div>
+  </j:if>
+
+</j:jelly>
+`
+
+/*
+=== XML END ===
+*/
