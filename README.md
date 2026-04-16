@@ -1,5 +1,5 @@
 # Case Summary — ServiceNow Native Integration
-# ══════════════════════════════════════════════
+# ════════════════════════════════════
 #
 # AI-powered case/incident summarization directly inside ServiceNow.
 # Click "🤖 AI Summary" button on the form → see summary popup (like AI Assist panel).
