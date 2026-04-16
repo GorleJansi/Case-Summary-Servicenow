@@ -1,211 +1,333 @@
-# Tools Explanation — Study Guide
+# Tools Explanation — Beginner Guide
 
-This document explains **why** each tool/technology is used in the Case Summary ServiceNow POC and **what role** it plays.
+This file explains the tools used in this project in a simple way.
 
----
-
-## 1) GlideRecord — Why Use It?
-
-**What it is**: ServiceNow's native data access API.
-
-**Why used here**:
-- Direct database queries are **faster** than REST API calls.
-- **Secure**: Runs server-side, no data exposed to client.
-- **Simple**: Query builder with .get(), .query(), .next() pattern.
-- **Built-in**: No external dependencies or authentication needed.
-
-**Alternative**: We could use the ServiceNow REST API, but it would be slower and require more setup.
+The goal is not just to say **why** they are used, but first to explain **what they actually are**.
 
 ---
 
-## 2) GlideAjax — Why Use It?
+## 1) What is ServiceNow?
 
-**What it is**: ServiceNow's built-in async communication from browser to server.
+ServiceNow is a cloud platform used by companies to manage IT work such as:
+- incidents,
+- cases,
+- service requests,
+- approvals,
+- workflows.
 
-**Why used here**:
-- **Lightweight**: Small payload, no setup needed.
-- **Asynchronous**: UI stays responsive during processing.
-- **Integrated**: Works seamlessly with Script Includes.
-- **No CORS issues**: Runs within ServiceNow domain.
-
-**Alternative**: We could use fetch/XMLHttpRequest, but GlideAjax is simpler and safer.
-
----
-
-## 3) AbstractAjaxProcessor — Why Extend It?
-
-**What it is**: ServiceNow base class for server-side AJAX handlers.
-
-**Why used here**:
-- **Pattern**: Standardized way to expose server methods to client.
-- **Security**: Built-in authentication and scope protection.
-- **Method exposure**: Functions become callable via GlideAjax automatically.
-- **JSON serialization**: Automatic conversion of return values.
-
-**Alternative**: Could write raw server-side code, but this is cleaner and safer.
+In this project, ServiceNow is the main system where the user opens a record and clicks the `AI Summary` button.
 
 ---
 
-## 4) sn_ws.RESTMessageV2 — Why Use It?
+## 2) What is a Script Include?
 
-**What it is**: ServiceNow's REST client for calling external APIs.
+A Script Include is a **server-side JavaScript file inside ServiceNow**.
 
-**Why used here**:
-- **Built-in**: No external HTTP library needed.
-- **Secure**: Handles certificates, timeouts, retries.
-- **Logging**: Integrated error tracking and debugging.
-- **Multi-protocol**: Works with OAuth2, API keys, basic auth.
+You can think of it like a backend helper class or reusable backend code.
 
-**Alternative**: Could use native JavaScript fetch, but server-side REST is more secure.
+In this project:
+- `CaseSummaryAI.js` is the Script Include.
+- It runs on the server side.
+- It fetches record data, builds the timeline, calls the LLM, and returns the result.
 
----
-
-## 5) OAuth2 (CIRCUIT) — Why Use It?
-
-**What it is**: Industry-standard API authentication protocol.
-
-**Why used here**:
-- **Secure credentials**: Client ID + secret, not exposed in requests.
-- **Token-based**: Each call carries a temporary access token.
-- **Cisco standard**: CIRCUIT LLM is Cisco-aligned and uses OAuth2.
-- **Revocable**: Can invalidate tokens if compromised.
-
-**Alternative**: API key auth would be simpler but less secure.
+So, the Script Include is the **main brain** of this solution.
 
 ---
 
-## 6) GlideModal — Why Use It?
+## 3) What is a UI Action?
 
-**What it is**: ServiceNow's modal dialog component.
+A UI Action is a **button, link, or action in the ServiceNow interface**.
 
-**Why used here**:
-- **Consistent UX**: Matches ServiceNow look & feel.
-- **Accessible**: Built-in keyboard navigation and screen reader support.
-- **Responsive**: Scales on mobile and desktop.
-- **Simple API**: Just call `setTitle()`, `renderWithContent()`.
+Examples:
+- form button,
+- list button,
+- form link.
 
-**Alternative**: Could use plain HTML popups, but GlideModal is more polished.
+In this project:
+- the `AI Summary` button is a UI Action.
+- when the user clicks it, JavaScript runs.
+- that JavaScript calls the Script Include.
 
----
-
-## 7) System Properties — Why Store Config Here?
-
-**What it is**: ServiceNow's key-value store for secrets and settings.
-
-**Why used here**:
-- **Secure**: Password-type properties are encrypted.
-- **Environment-specific**: Different values per instance (dev/prod).
-- **Centralized**: No hardcoding in scripts.
-- **Auditable**: Changes are logged and trackable.
-
-**Alternative**: Could hardcode in script, but that's a security risk.
+So, the UI Action is the **thing the user clicks**.
 
 ---
 
-## 8) Jelly (UI Macro XML) — Why Use It?
+## 4) What is GlideAjax?
 
-**What it is**: ServiceNow's templating language for dynamic UI.
+GlideAjax is a ServiceNow feature that lets **browser-side JavaScript talk to server-side JavaScript**.
 
-**Why used here**:
-- **Form integration**: Seamlessly renders as part of the form layout.
-- **Server-side evaluation**: Can access record data directly.
-- **Conditional rendering**: Show/hide based on field values.
-- **Escape handling**: Built-in HTML escaping for security.
+Simple meaning:
+- the button is on the page,
+- the page needs data from the server,
+- GlideAjax sends that request.
 
-**Alternative**: Could use pure JavaScript, but Jelly is more integrated with ServiceNow.
+In this project:
+- the UI Action uses GlideAjax,
+- GlideAjax calls `CaseSummaryAI`,
+- the Script Include sends back JSON.
 
----
-
-## 9) JavaScript (Client-Side) — Why Use It?
-
-**What it is**: The language for browser-side interactions.
-
-**Why used here**:
-- **UI interactions**: Handle button clicks, modal rendering.
-- **Validation**: Check record state before sending request.
-- **Async handling**: Manage loading states and responses.
-- **DOM manipulation**: Build and style modal content dynamically.
-
-**Alternative**: ServiceNow supports other languages server-side, but client-side is always JavaScript.
+So, GlideAjax is the **messenger between the UI and the server code**.
 
 ---
 
-## 10) CIRCUIT LLM — Why Use It?
+## 5) What is AbstractAjaxProcessor?
 
-**What it is**: Cisco's enterprise large language model.
+`AbstractAjaxProcessor` is a **base class provided by ServiceNow**.
 
-**Why used here**:
-- **Enterprise-grade**: Designed for business/support use cases.
-- **Fast inference**: Optimized for low latency.
-- **Configurable**: Temperature, max tokens, model choice.
-- **Cisco ecosystem**: Aligns with Webex/other Cisco tools.
+When a Script Include extends it, ServiceNow allows that Script Include to be called through GlideAjax.
 
-**Alternative**: Could use OpenAI GPT-4, but CIRCUIT is aligned with customer ecosystem.
+In this project:
+- `CaseSummaryAI` extends `AbstractAjaxProcessor`.
+- that is what makes `getSummary()` callable from the UI Action.
 
----
-
-## 11) sys_journal_field, sys_email Tables — Why Use Them?
-
-**What they are**: ServiceNow's built-in tables for case history.
-
-**Why used here**:
-- **Native storage**: All comments/work notes automatically recorded here.
-- **Indexed**: Fast queries on large tables.
-- **Structured**: Metadata like creator, timestamp, type.
-- **Queryable**: Can filter by element (comment vs work note).
-
-**Alternative**: Could store summaries in custom tables, but sys_journal_field is standard.
+So, this is what makes the Script Include work with GlideAjax.
 
 ---
 
-## 12) Custom Fields (x_case_summary_*) — Why Add Them?
+## 6) What is GlideRecord?
 
-**What they are**: Extended data model fields specific to your namespace.
+GlideRecord is ServiceNow’s **server-side database access tool**.
 
-**Why used here**:
-- **Persistence**: Store generated summary on the record for later viewing.
-- **Formatting**: UI Macro reads field and displays it in panel.
-- **Auditability**: Track when summaries were generated.
-- **Reusability**: Other workflows can access the summary field.
+It is used to:
+- read records,
+- update records,
+- query tables,
+- loop through results.
 
-**Alternative**: Could only show modal and not persist, but custom fields enable richer UX.
+In this project, GlideRecord is used to read:
+- the incident/case record,
+- journal entries,
+- email records.
 
----
-
-## Architecture Decision: Why No External Libraries?
-
-Traditional RAG POCs use Python + external packages. **This one uses ServiceNow native APIs because:**
-
-1. **No dependency management**: No pip/npm needed.
-2. **Simple deployment**: Just copy scripts into ServiceNow.
-3. **No security scanning**: Fewer dependencies = smaller attack surface.
-4. **Tight integration**: ServiceNow APIs are optimized for the platform.
-5. **Cost**: Fewer external services to pay for.
+So, GlideRecord is the **tool that reads data from ServiceNow tables**.
 
 ---
 
-## Learning Outcomes
+## 7) What are `sys_journal_field` and `sys_email`?
 
-By studying this POC, you'll understand:
+These are **tables inside ServiceNow**.
 
-- How to fetch and process ServiceNow data efficiently.
-- How to make secure outbound API calls.
-- How to build interactive UI components.
-- How to architect a simple RAG-like system without external ML libraries.
-- How to configure and manage secrets in enterprise platforms.
+### `sys_journal_field`
+This table stores journal-style updates such as:
+- comments,
+- work notes.
 
----
+### `sys_email`
+This table stores email activity related to records.
 
-## Suggested Next Steps for Study
+In this project, those tables are used to build the case history.
 
-1. **Trace a request**: Follow a user click through GlideAjax → Script Include → REST call → response.
-2. **Modify the prompt**: Change the LLM instruction and observe answer quality changes.
-3. **Add a field**: Create a custom field and have `generateAndSave()` populate it.
-4. **Extend the timeline**: Add more data sources (e.g., attachments, linked records).
-5. **Optimize retrieval**: Tune the LLM temperature and max tokens for faster inference.
+So, these tables are the **source of the timeline content**.
 
 ---
 
-## One-Line Summary
+## 8) What is `sn_ws.RESTMessageV2`?
 
-This POC shows how to build a working AI summarization system using **only ServiceNow's native APIs + an external LLM**, with no additional dependencies or frameworks.
+`sn_ws.RESTMessageV2` is ServiceNow’s built-in tool for **making HTTP/REST API calls from the server side**.
+
+That means ServiceNow can call an external system such as:
+- an AI model,
+- another web service,
+- a third-party API.
+
+In this project:
+- it is used to call the CIRCUIT token endpoint,
+- then it is used again to call the CIRCUIT LLM endpoint.
+
+So, this is the **tool that connects ServiceNow to the external AI service**.
+
+---
+
+## 9) What is OAuth2?
+
+OAuth2 is a standard way for applications to **authenticate securely** when calling APIs.
+
+Instead of sending username/password every time, the system first gets an **access token**.
+
+In this project:
+- the Script Include sends client ID + secret,
+- CIRCUIT returns an access token,
+- that token is then used to call the summarization endpoint.
+
+So, OAuth2 is the **login/authentication method used to access the LLM API**.
+
+---
+
+## 10) What is CIRCUIT LLM?
+
+CIRCUIT LLM is the **AI model service** used in this project.
+
+LLM means **Large Language Model**.
+
+A large language model is an AI system that can:
+- read text,
+- understand context,
+- generate summaries,
+- answer questions.
+
+In this project:
+- CIRCUIT receives the case timeline,
+- it generates the summary,
+- it returns structured output like `Issue`, `Action Taken`, and `Resolution`.
+
+So, CIRCUIT LLM is the **AI engine that writes the summary**.
+
+---
+
+## 11) What is GlideModal?
+
+GlideModal is ServiceNow’s built-in way to show a **popup window / modal dialog**.
+
+In this project:
+- after the summary is generated,
+- the result is shown in a popup,
+- the popup is styled to look like an AI panel.
+
+So, GlideModal is the **tool that displays the summary nicely to the user**.
+
+---
+
+## 12) What is a UI Macro?
+
+A UI Macro is a reusable UI component in ServiceNow.
+
+It is usually written using **Jelly/XML**.
+
+You can think of it like a reusable visual block that can be placed on a form.
+
+In this project:
+- `x_case_summary_ai_panel.xml` is the UI Macro,
+- it shows the saved summary on the form,
+- it acts like a persistent AI summary panel.
+
+So, the UI Macro is the **saved summary panel shown on the record**.
+
+---
+
+## 13) What is Jelly?
+
+Jelly is a templating language used by ServiceNow for building dynamic UI pieces.
+
+It mixes:
+- XML-like markup,
+- ServiceNow data access,
+- UI rendering logic.
+
+In this project, Jelly is used inside the UI Macro.
+
+So, Jelly is the **format ServiceNow uses to build certain UI components**.
+
+---
+
+## 14) What are System Properties?
+
+System Properties are configuration values stored in ServiceNow.
+
+They are used to keep settings outside the code.
+
+Examples in this project:
+- CIRCUIT client ID
+- CIRCUIT client secret
+- app key
+- model name
+- endpoint URLs
+
+So, System Properties are the **settings/configuration storage** for the project.
+
+---
+
+## 15) What are Custom Fields?
+
+Custom fields are additional columns added to a ServiceNow table.
+
+In this project, they are optional fields like:
+- `x_case_summary_ai_summary`
+- `x_case_summary_ai_generated_on`
+
+These fields help store:
+- the generated summary,
+- when it was generated.
+
+So, custom fields are the **extra storage added to the record**.
+
+---
+
+## 16) What is JavaScript in this project?
+
+JavaScript is the programming language used in this project.
+
+It is used in two places:
+
+### Client-side JavaScript
+Runs in the browser.
+Used for:
+- button click handling,
+- popup display,
+- calling GlideAjax.
+
+### Server-side JavaScript in ServiceNow
+Runs inside ServiceNow on the backend.
+Used for:
+- reading records,
+- making REST calls,
+- building summaries.
+
+So, JavaScript is the **main programming language for the whole solution**.
+
+---
+
+## 17) How do all these tools connect together?
+
+Here is the simple flow:
+
+1. User clicks the **UI Action** button.
+2. The page uses **GlideAjax**.
+3. GlideAjax calls the **Script Include**.
+4. The Script Include uses **GlideRecord** to read data from ServiceNow tables.
+5. The Script Include uses **RESTMessageV2** to call **CIRCUIT LLM**.
+6. The response comes back.
+7. The result is shown using **GlideModal**.
+8. Optionally, the result is saved into **custom fields** and shown in a **UI Macro**.
+
+---
+
+## 18) Why this is still called a native ServiceNow solution
+
+This is called **ServiceNow-native** because the main logic lives inside ServiceNow itself.
+
+That means:
+- the UI is in ServiceNow,
+- the server code is in ServiceNow,
+- the data is read directly from ServiceNow tables,
+- only the LLM call goes outside ServiceNow.
+
+So, the solution is native to ServiceNow even though it uses an external AI endpoint.
+
+---
+
+## 19) Simple one-line explanation of each tool
+
+- **ServiceNow**: The platform where the case exists.
+- **Script Include**: Backend JavaScript logic.
+- **UI Action**: The button the user clicks.
+- **GlideAjax**: Connects the UI to the backend code.
+- **AbstractAjaxProcessor**: Makes the Script Include callable from the UI.
+- **GlideRecord**: Reads data from ServiceNow tables.
+- **sys_journal_field**: Stores comments and work notes.
+- **sys_email**: Stores related email activity.
+- **RESTMessageV2**: Calls external APIs.
+- **OAuth2**: Authenticates to the AI API.
+- **CIRCUIT LLM**: Generates the summary.
+- **GlideModal**: Shows the popup.
+- **UI Macro**: Shows a reusable summary panel on the form.
+- **Jelly**: The template format used in UI Macro.
+- **System Properties**: Store settings and secrets.
+- **Custom Fields**: Save the summary on the record.
+
+---
+
+## 20) Final summary
+
+If you are new to these tools, the easiest way to understand the project is this:
+
+**A button on a ServiceNow record calls backend JavaScript, that backend reads case history, sends it to an AI model, and shows the returned summary in a popup or panel.**

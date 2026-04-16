@@ -1,85 +1,82 @@
 # Case Summary — ServiceNow Native Integration
-# ════════════════════════════════════
-#
-# Click "🤖 AI Summary" button on the form → see summary popup.
-#
 
+This project adds an `AI Summary` button in ServiceNow.
 
-## What This Does
+When a user clicks the button, ServiceNow reads the case history and asks an AI model to generate a short summary.
 
-```
-Engineer opens Incident INC10791727 in ServiceNow
-         │
-         │  clicks [🤖 AI Summary] button
-         ▼
-┌────────────────────────────────────────────┐
-│  Script Include (CaseSummaryAI) runs:      │
-│                                            │
-│  ① GlideRecord → incident metadata        │
-│  ② GlideRecord → comments + work notes    │
-│  ③ GlideRecord → email threads            │
-│  ④ Build chronological timeline            │
-│  ⑤ Construct LLM prompt                   │
-│  ⑥ RESTMessageV2 → CIRCUIT LLM            │
-│  ⑦ Parse structured response              │
-│  ⑧ Save summary to record                 │
-└────────────────────────────────────────────┘
-         │
-         ▼
-┌────────────────────────────────────────────┐
-│  ✨ Powered by CIRCUIT LLM                 │
-│                                            │
-│  Issue:                                    │
-│  Multiple storage nodes experienced an     │
-│  outage due to high temperature alerts...  │
-│                                            │
-│  Action Taken:                             │
-│  • Emergency firmware upgrade on nodes     │
-│  • Installed temporary cooling fans        │
-│  • Engaged on-site vendor support          │
-│  • Bounced database and app services       │
-│  • Implemented 8-hour monitoring cycles    │
-│                                            │
-│  Resolution:                               │
-│  Storage nodes stabilized by temporary     │
-│  cooling and firmware update. All services │
-│  restarted and verified operational.       │
-│                                            │
-│  📋 👍 👎 🔄     Last generated: 15-04-2026│
-└────────────────────────────────────────────┘
-```
+## What You Get
 
+- A button on the form: `🤖 AI Summary`
+- A popup with sections like `Issue`, `Action Taken`, and `Resolution`
+- Optional persistent summary panel on the form
+- No Node.js/Python app required for the core flow
 
-## Files
+## For Beginners: What This Means
 
-```
+Everything important runs inside ServiceNow:
+- `UI Action` = the button users click
+- `Script Include` = backend logic in ServiceNow
+- `GlideRecord` = reads record data from ServiceNow tables
+- `RESTMessageV2` = calls the external AI endpoint
+
+## How It Works (Simple Flow)
+
+1. User opens an `incident` or case record.
+2. User clicks `🤖 AI Summary`.
+3. `GlideAjax` calls `CaseSummaryAI`.
+4. `CaseSummaryAI` uses `GlideRecord` to fetch record details, journal entries, and emails.
+5. A chronological timeline is built and converted into a prompt.
+6. `sn_ws.RESTMessageV2` calls CIRCUIT LLM.
+7. The response is parsed into `Issue`, `Action Taken`, and `Resolution`.
+8. The summary is shown in a popup (and can also be saved on the record).
+
+## Main Files
+
+- **`script_include/CaseSummaryAI.js`**: Main backend logic (fetches data + calls AI)
+- **`ui_action/ai_summary_button.js`**: Button click + popup UI
+- **`ui_macro/x_case_summary_ai_panel.xml`**: Optional persistent panel on the form
+- **System Properties**: Store credentials and API configuration
+
+## Project Structure
+
+```text
 Case-Summary-ServiceNow/
-│
 ├── script_include/
-│   └── CaseSummaryAI.js          ← Server-side: data fetch + timeline + LLM call
-│
+│   └── CaseSummaryAI.js
 ├── ui_action/
-│   └── ai_summary_button.js      ← Button + popup modal (client-side)
-│
+│   └── ai_summary_button.js
 ├── ui_macro/
-│   └── x_case_summary_ai_panel.xml  ← Persistent panel on form (like AI Assist)
-│
-├── README.md                      ← This file
-└── SETUP_GUIDE.md                 ← Step-by-step installation
+│   └── x_case_summary_ai_panel.xml
+├── README.md
+├── SETUP_GUIDE.md
+├── END_TO_END_DOCUMENTATION.md
+├── REQUIREMENTS.md
+└── TOOLS_EXPLANATION.md
 ```
 
+## Quick Start
 
-## Quick Setup (5 steps)
+See `SETUP_GUIDE.md` for full detailed steps.
 
-See `SETUP_GUIDE.md` for full details.
+Basic setup:
+1. Create CIRCUIT-related ServiceNow system properties.
+2. Create the `CaseSummaryAI` Script Include.
+3. Create the `AI Summary` UI Action.
+4. Optionally add custom fields, formatter, and UI Macro.
+5. Test on an incident or case record.
 
-1. **System Properties** — store CIRCUIT credentials
-2. **Script Include** — paste `CaseSummaryAI.js`
-3. **UI Action** — paste `ai_summary_button.js`
-4. **(Optional) Custom fields + UI Macro** — for persistent panel on form
-5. **Test** — open an incident, click the button
+## Documentation
 
+- `SETUP_GUIDE.md` — step-by-step installation
+- `END_TO_END_DOCUMENTATION.md` — complete architecture + request flow
+- `REQUIREMENTS.md` — beginner-friendly requirements checklist
+- `TOOLS_EXPLANATION.md` — beginner-friendly tool explanations
 
+## Notes
 
+- This repo is focused on **ServiceNow-native JavaScript** as the primary solution.
+- It is designed so the main logic can be deployed directly in ServiceNow artifacts.
 
-   # Author: Jansi Gorle · CX · April 2026
+## Author
+
+Jansi Gorle · CX · April 2026

@@ -1,82 +1,130 @@
-# Requirements & Tools Used
+# Requirements (Beginner-Friendly)
 
-This document lists all tools, libraries, and technologies used in the **Case Summary ServiceNow** project.
+This file tells you what you need for this project in simple language.
 
-## ServiceNow Platform
-- **GlideRecord**: ServiceNow data retrieval and manipulation API
-- **GlideAjax**: Client-side asynchronous communication with server-side scripts
-- **GlideModal**: Client-side UI component for rendering modal dialogs
-- **GlideStringUtil**: String utility functions (base64 encoding, etc.)
-- **sn_ws.RESTMessageV2**: ServiceNow REST message utility for making outbound HTTP calls
-- **AbstractAjaxProcessor**: Base class for server-side AJAX processors
-- **gs.getProperty()**: ServiceNow global function to retrieve system properties
-
-## External Services & APIs
-- **CIRCUIT LLM (Cisco)**: AI language model for text summarization
-  - OAuth2 token endpoint: `id.cisco.com`
-  - Chat completion endpoint: `chat-ai.cisco.com`
-- **OpenAI Models** (alternative): Can be swapped for CIRCUIT
-- **HTTP/REST**: Standard protocol for API communication
-
-## Client-Side Technologies
-- **JavaScript (ES5+)**: Used in UI Action and UI Macro
-- **DOM Manipulation**: HTML/CSS for modal rendering
-- **CSS Styling**: Inline styles for modal panel design
-- **Jelly (XML)**: ServiceNow templating language for UI Macro
-
-## Development & Configuration
-- **System Properties**: ServiceNow configuration storage for:
-  - CIRCUIT credentials (client ID, secret, app key)
-  - Model name and endpoint URLs
-- **Update Sets**: ServiceNow packaging for deployment
-- **Dictionary Fields**: Custom fields for data storage
-
-## Optional Components
-- **UI Macro**: Jelly/XML templating for persistent form panel
-- **Formatter**: ServiceNow UI component for rendering formatted content
-- **Custom Fields**: Extended data model for summary persistence
+Think of it as a checklist: platform, scripts, settings, and external access.
 
 ---
 
-## Architecture Summary
+## 1) Main Platform Requirement
 
-| Layer | Tool/Technology | Purpose |
-|-------|-----------------|---------|
-| **Client UI** | JavaScript, GlideModal, CSS | Button interaction and modal display |
-| **Communication** | GlideAjax | Client-server async messaging |
-| **Server Logic** | GlideRecord, AbstractAjaxProcessor | Data retrieval and processing |
-| **External API** | RESTMessageV2, OAuth2 | LLM integration |
-| **Data Storage** | ServiceNow DB, sys_journal_field, sys_email | Record context and history |
-| **Configuration** | sys_properties | Secrets and settings management |
-| **(Optional) Display** | UI Macro, Formatter, Jelly | Persistent form panel |
+- **ServiceNow instance** (this is where the app runs)
+
+You need access to create:
+- Script Includes
+- UI Actions
+- UI Macros (optional)
+- System Properties
 
 ---
 
-## Why These Tools?
+## 2) Required Project Files (from this repo)
 
-- **ServiceNow APIs**: Native platform integration—no external dependencies needed.
-- **GlideRecord**: Direct database access is faster and more secure than REST APIs.
-- **GlideAjax**: Lightweight, built-in mechanism for async client-server calls.
-- **RESTMessageV2**: Standard ServiceNow approach for outbound service integration.
-- **CIRCUIT LLM**: Enterprise-grade AI aligned with Cisco ecosystem.
-- **OAuth2**: Secure credential management for API access.
+- `script_include/CaseSummaryAI.js` — backend logic inside ServiceNow
+- `ui_action/ai_summary_button.js` — button and popup on the form
+- `ui_macro/x_case_summary_ai_panel.xml` — optional persistent summary panel
 
 ---
 
-## Deployment Requirements
+## 3) Required ServiceNow Features / Tools
 
-- ServiceNow instance (Quebec or later recommended)
-- Outbound HTTP connectivity to CIRCUIT endpoints
-- CIRCUIT credentials (OAuth2 client ID, secret, app key)
-- (Optional) Custom fields and UI Macro for persistent panel
+These are built-in ServiceNow tools used by this project:
+
+- **GlideRecord** — reads data from ServiceNow tables
+- **GlideAjax** — lets UI code call server code
+- **AbstractAjaxProcessor** — allows Script Include methods to be called via GlideAjax
+- **sn_ws.RESTMessageV2** — makes external API calls from ServiceNow
+- **GlideModal** — shows popup dialog in the UI
+- **System Properties** — stores credentials and config values
+
+You do not need to install these; they already exist in ServiceNow.
 
 ---
 
-## No External Dependencies Needed
+## 4) Required ServiceNow Data Sources
 
-Unlike traditional Python/Node projects, this POC requires **no package managers** (pip, npm):
-- All ServiceNow APIs are built-in.
-- CIRCUIT integration uses native HTTP/REST.
-- Styling is CSS-in-JS.
+The summary is generated from these tables:
 
-This keeps the solution lightweight and deployment-simple.
+- record table: `incident` (or another case table)
+- journal table: `sys_journal_field` (comments/work notes)
+- email table: `sys_email`
+
+---
+
+## 5) Required External Integration
+
+This project calls Cisco CIRCUIT LLM.
+
+You need:
+- CIRCUIT client ID
+- CIRCUIT client secret
+- CIRCUIT app key
+- token endpoint access (`id.cisco.com`)
+- chat endpoint access (`chat-ai.cisco.com`)
+
+---
+
+## 6) Required System Properties in ServiceNow
+
+Create these properties:
+
+- `x_case_summary.circuit_client_id`
+- `x_case_summary.circuit_client_secret`
+- `x_case_summary.circuit_app_key`
+- `x_case_summary.circuit_model`
+- `x_case_summary.circuit_token_url`
+- `x_case_summary.circuit_chat_base_url`
+
+These keep secrets/config outside the code.
+
+---
+
+## 7) Optional Requirements (if you want persistent panel)
+
+Optional custom fields:
+
+- `x_case_summary_ai_summary`
+- `x_case_summary_ai_generated_on`
+
+Optional UI setup:
+
+- create UI Macro using `x_case_summary_ai_panel.xml`
+- create Formatter and add it to form layout
+
+---
+
+## 8) Network / Security Requirements
+
+ServiceNow must be allowed to make outbound HTTPS calls to:
+
+- `https://id.cisco.com`
+- `https://chat-ai.cisco.com`
+
+If blocked, token/LLM calls will fail.
+
+---
+
+## 9) What you do NOT need
+
+For this ServiceNow-native version, you do **not** need:
+
+- Node.js server
+- npm packages
+- Python runtime
+- Docker
+
+Everything runs using ServiceNow native scripts + external LLM API.
+
+---
+
+## 10) Quick Readiness Checklist
+
+- [ ] ServiceNow admin access
+- [ ] Required system properties created
+- [ ] Script Include created and client-callable
+- [ ] UI Action created on target table
+- [ ] CIRCUIT credentials valid
+- [ ] Outbound access to CIRCUIT URLs
+- [ ] Test incident/case available with comments/work notes/emails
+
+If all are checked, you are ready to run the solution.
