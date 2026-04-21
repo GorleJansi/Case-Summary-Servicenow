@@ -114,8 +114,78 @@ flowchart TD
 ## Notes
 
 - All paths reuse `_runPipeline` — one place to maintain the logic.
-- The Webex bot does NOT use Lambda — it calls ServiceNow directly via the Scripted REST API.
 - Path 1 uses `GlideAjax` (browser to server). Paths 2 and 3 use the REST API (external to server).
+
+---
+
+## Dev Setup vs Production Setup
+
+### Dev/Testing (current)
+
+Cisco network blocks ngrok, so we use Lambda + API Gateway as a temporary relay for the Webex bot.
+
+```
+Webex message
+  → Webex webhook
+  → AWS API Gateway
+  → AWS Lambda (parses message, calls ServiceNow)
+  → ServiceNow Scripted REST API
+  → CaseSummaryAI._runPipeline() (does all the real work)
+  → Lambda receives response
+  → Lambda sends Adaptive Card back to Webex
+```
+
+**Why Lambda for now:** Cisco blocks inbound tunneling tools like ngrok. Lambda + API Gateway gives us a public URL that Webex can reach.
+
+**Lambda is just a pass-through** — it does NOT do summarization. All real logic stays in ServiceNow.
+
+### Production (target)
+
+No Lambda. No external server. Webex webhook calls ServiceNow directly.
+
+```
+Webex message
+  → Webex webhook
+  → ServiceNow Scripted REST API (directly)
+  → CaseSummaryAI._runPipeline() (fetch data, build timeline, call LLM, summarize)
+  → ServiceNow sends response back to Webex via REST
+```
+
+**Everything runs inside ServiceNow:**
+- Fetching case data → GlideRecord
+- Building timeline → JavaScript in Script Include
+- Calling CIRCUIT LLM → RESTMessageV2
+- Formatting summary → JavaScript in Script Include
+- Sending Webex card → RESTMessageV2 (outbound call to Webex API)
+
+### What changes from Dev to Prod
+
+| Component | Dev | Prod |
+|---|---|---|
+| Webex webhook target | API Gateway URL | ServiceNow Scripted REST API URL |
+| Message parsing | Lambda (Python) | ServiceNow Script Include (JavaScript) |
+| Calls _runPipeline | Lambda calls ServiceNow REST API | ServiceNow calls it internally |
+| Sends Webex card | Lambda sends via Webex SDK | ServiceNow sends via RESTMessageV2 |
+| External servers | Lambda + API Gateway | **None** |
+
+### Production architecture diagram
+
+```mermaid
+flowchart TD
+    WX[User messages bot in Webex] --> WH[Webex Webhook]
+    WH --> SN[ServiceNow Scripted REST API]
+
+    subgraph ServiceNow[Everything inside ServiceNow]
+        SN --> PARSE[Parse case number from webhook payload]
+        PARSE --> RP[_runPipeline]
+        RP --> DATA[GlideRecord: fetch case + journals + emails]
+        DATA --> TL[Build timeline]
+        TL --> PROMPT[Build prompt]
+        PROMPT --> LLM[RESTMessageV2: call CIRCUIT LLM]
+        LLM --> SECTIONS[Parse sections]
+        SECTIONS --> CARD[RESTMessageV2: send Adaptive Card to Webex]
+    end
+```
 
 ---
 
