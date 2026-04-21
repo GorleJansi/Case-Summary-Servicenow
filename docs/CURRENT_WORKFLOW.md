@@ -46,12 +46,76 @@ flowchart TD
     R -. optional display .-> S[UI Macro formatter shows saved summary panel]
 ```
 
+## All 3 Paths to Get a Summary
+
+All paths share the same core engine: `CaseSummaryAI._runPipeline()`
+
+### Path 1 — ServiceNow Button (✅ working)
+
+```
+Agent opens case form → clicks "AI Summary" button
+→ GlideAjax → CaseSummaryAI.getSummary() → _runPipeline
+→ summary shown in popup modal
+```
+
+**File:** `ui_action/ai_summary_button.js` → `script_include/CaseSummaryAI.js`
+
+### Path 2 — Webex Bot Direct Message (new)
+
+```
+User DMs bot: "summary CS-12345"
+→ Webex webhook → bot parses case number
+→ bot calls ServiceNow Scripted REST API
+→ ServiceNow runs _runPipeline (same logic as button)
+→ bot sends Adaptive Card back in Webex
+```
+
+**Files:** `webex_bot/summary_command.py` → `scripted_rest_api/CaseSummaryAPI.js` → `script_include/CaseSummaryAI.js`
+
+### Path 3 — Webex Space (bot in a room) (new)
+
+```
+User @mentions bot in space: "@BotName summary CS-12345"
+→ same flow as Path 2
+→ bot replies with Adaptive Card in the space
+```
+
+**Files:** Same as Path 2 — the bot handles both DM and space messages.
+
+### Architecture Diagram
+
+```mermaid
+flowchart TD
+    subgraph Shared[Shared Engine in ServiceNow]
+        RP[_runPipeline]
+        RP --> GR[GlideRecord: fetch case + journals + emails]
+        GR --> TL[Build timeline]
+        TL --> PR[Build prompt]
+        PR --> LLM[Call CIRCUIT LLM]
+        LLM --> PS[Parse sections]
+    end
+
+    subgraph Path1[Path 1: ServiceNow Button]
+        B[Agent clicks AI Summary button] --> GA[GlideAjax]
+        GA --> GS[getSummary]
+        GS --> RP
+        RP --> M[Show modal popup]
+    end
+
+    subgraph Path2[Path 2 and 3: Webex Bot]
+        WX[User messages bot in Webex] --> WH[Webhook]
+        WH --> BOT[Bot parses case number]
+        BOT --> API[Scripted REST API]
+        API --> RP
+        RP --> CARD[Bot sends Adaptive Card]
+    end
+```
+
 ## Notes
 
-- The current button flow uses `getSummary`, which returns the generated summary to the popup.
-- The save path exists in `generateAndSave`, but it is not the main path used by the current UI Action.
-- This makes the current workflow good for quick preview and review.
-- If needed, the next enhancement is to wire the button to also save the generated summary automatically.
+- All paths reuse `_runPipeline` — one place to maintain the logic.
+- The Webex bot does NOT use Lambda — it calls ServiceNow directly via the Scripted REST API.
+- Path 1 uses `GlideAjax` (browser to server). Paths 2 and 3 use the REST API (external to server).
 
 ---
 
